@@ -168,14 +168,14 @@ class World:
                  self.linear_x, self.linear_y, self.linear_z, 
                  self.angular_x, self.angular_y, self.angular_z]
 
-        distance = sqrt((self.position_x)**2 + (self.position_y)**2 + (self.position_z-5)**2)
+        distance = math.sqrt((self.position_x)**2 + (self.position_y)**2 + (self.position_z-5)**2)
         reward = math.exp(distance);
 
         done = False
         if distance > 3:
             done = True
 
-        return state, reward, done, null
+        return state, reward, done, Empty
 
 if __name__ == '__main__':
     print "Connecting"
@@ -188,6 +188,6 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         env.reset()
         for i in range(5000):
-            states, reward, done, info = env.step([0, 0, 0, 0, 0, 0, 0, 0])
+            states, reward, done, info = env.step([800, 800, 0, 0, 0, 0, 0, 0])
             if i % 100 == 0:
                 print states

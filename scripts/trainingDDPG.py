@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import tensorflow as tf
 import numpy as np
 import gym
@@ -7,10 +8,11 @@ from datetime import datetime
 
 import models.Architecture.DenseActorCritic as AC
 from models.DDPG import DDPG as ddpg
+from gazebo_px4_gym_ros import World as world
 
 TASK = {
     "model"               : "DDPG",
-    "ENV_NAME"            : "Pendulum-v0",
+    "ENV_NAME"            : "Quadcopter",
     "actor"               : [32,32],
     "critic"              : [32,32],
     "actor learning rate" : 0.01,
@@ -44,11 +46,12 @@ def TRAIN(TASK_DICT):
     with open(TMPDIR+"log", "w") as f:
         f.write(json.dumps(TASK_DICT, sort_keys=True, indent=4))
 
-    env = gym.make(TASK_DICT["ENV_NAME"])
+    env = world()
+    # env.seed(0)
 
-    obs_dim = env.observation_space.shape[0]
-    act_dim = env.action_space.shape[0]
-    a_bound = env.action_space.high
+    obs_dim = 13
+    act_dim = 4
+    a_bound = 1100
 
     actor  = AC.Actor(act_dim, a_bound, TASK_DICT["actor"])
     critic = AC.Critic(TASK_DICT["critic"])
@@ -74,17 +77,16 @@ def TRAIN(TASK_DICT):
             done = False
             R = 0
             while not done:
-                env.render()
                 if agent.memory.Full:
                     agent.training_tf(sess)
 
                 if np.random.random()>var:
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
-                    a = np.clip(np.random.normal(a, var/10), -a_bound, a_bound)
                 else:
-                    a = env.action_space.sample()
+                    a = np.random.randint(0, high=1500, size=4)
 
-                s_, r, done, info = env.step(a)
+                a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
+                s_, r, done, info = env.step(a_extend)
                 R+=r
                 agent.memory.store(s,a,r,s_,done)
                 s=s_

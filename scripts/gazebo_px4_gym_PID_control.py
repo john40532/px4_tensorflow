@@ -40,12 +40,35 @@ import rospy
 import roslaunch
 import time, sys, argparse, math
 import random
+import numpy as np
 from pymavlink import mavutil
 from rosgraph_msgs.msg import Clock
 from gazebo_msgs.msg import ModelStates
 from gazebo_msgs.msg import ModelState
 from std_srvs.srv import Empty
 from gazebo_msgs.srv import SetModelState
+from Quadcopter_simulator.controller import Controller_PID_Point2Point
+
+# Set goals to go to
+GOALS = [(1,1,2),(1,-1,4),(-1,-1,2),(-1,1,4)]
+YAWS = [0,3.14,-1.54,1.54]
+# Define the quadcopters
+QUADCOPTER={'q1':{'position':[1,0,4],'orientation':[0,0,0],'L':0.3,'r':0.1,'prop_size':[10,4.5],'weight':1.2}}
+# Controller parameters
+CONTROLLER_PARAMETERS = {'Motor_limits':[10,1100],
+                    'Tilt_limits':[-30,30],
+                    'Yaw_Control_Limits':[-900,900],
+                    'Z_XY_offset':5000,
+                    'Linear_PID':{'P':[1,1,1500],'I':[0,0,100],'D':[0,0,500]},
+                    'Linear_To_Angular_Scaler':[10,10,0],
+                    'Yaw_Rate_Scaler':0.18,
+                    'Angular_PID':{'P':[6,6,70],'I':[10,10,1.2],'D':[100,100,0]},
+                    }
+
+# Make objects for quadcopter, gui and controller
+
+ctrl = Controller_PID_Point2Point(params=CONTROLLER_PARAMETERS)
+
 
 
 class World:
@@ -57,7 +80,7 @@ class World:
         self.orientation_x = 0
         self.orientation_y = 0
         self.orientation_z = 0
-        self.orientation_w = 0
+        self.orientation_w = 1
         self.linear_x = 0
         self.linear_y = 0
         self.linear_z = 0
@@ -65,13 +88,6 @@ class World:
         self.angular_y = 0
         self.angular_z = 0
         self.random_seed = None
-
-        print "Connecting..."
-        self.udp = mavutil.mavudp('127.0.0.1:14560', source_system=0)  #gazebo
-        rospy.init_node('listener', anonymous=True)
-        rate = rospy.Rate(500) # 10hz
-        # env.seed(0)
-        rospy.Subscriber("/gazebo/model_states", ModelStates, self.model_states_callback)
 
     def call_next_step_srv(self):
         rospy.wait_for_service('/gazebo/next_step')
@@ -129,7 +145,7 @@ class World:
             init_model_state.model_name = 'iris'
             init_model_state.pose.position.x = 0
             init_model_state.pose.position.y = 0
-            init_model_state.pose.position.z = 3
+            init_model_state.pose.position.z = 4
             init_model_state.pose.orientation.x = 0
             init_model_state.pose.orientation.y = 0
             init_model_state.pose.orientation.z = 0
@@ -156,9 +172,9 @@ class World:
                  init_model_state.twist.angular.x, init_model_state.twist.angular.y, init_model_state.twist.angular.z]
 
     def delay(self):
-    	i = 100000000
-    	while i > 0:
-    		i -= 1
+        i = 100000000
+        while i > 0:
+            i -= 1
 
     def model_states_callback(self, data):
         self.position_x = data.pose[self.iris_index].position.x
@@ -168,19 +184,19 @@ class World:
         self.orientation_y = data.pose[self.iris_index].orientation.y
         self.orientation_z = data.pose[self.iris_index].orientation.z
         self.orientation_w = data.pose[self.iris_index].orientation.w
-        # self.linear_x = data.twist[self.iris_index].linear.x
-        # self.linear_y = data.twist[self.iris_index].linear.y
-        # self.linear_z = data.twist[self.iris_index].linear.z
-        # self.angular_x = data.twist[self.iris_index].angular.x
-        # self.angular_y = data.twist[self.iris_index].angular.y
-        # self.angular_z = data.twist[self.iris_index].angular.z
+        self.linear_x = data.twist[self.iris_index].linear.x
+        self.linear_y = data.twist[self.iris_index].linear.y
+        self.linear_z = data.twist[self.iris_index].linear.z
+        self.angular_x = data.twist[self.iris_index].angular.x
+        self.angular_y = data.twist[self.iris_index].angular.y
+        self.angular_z = data.twist[self.iris_index].angular.z
 
 
     def step(self, actuator_cmd):
 
         assert len(actuator_cmd) is 8
 
-        self.udp.mav.rc_channels_override_send(self.udp.target_system, self.udp.target_component, 
+        udp.mav.rc_channels_override_send(udp.target_system, udp.target_component, 
                                           actuator_cmd[0],
                                           actuator_cmd[1],
                                           actuator_cmd[2],
@@ -190,7 +206,7 @@ class World:
                                           actuator_cmd[6],
                                           actuator_cmd[7],
                                           )
-        self.udp.recv_msg()
+        udp.recv_msg()
         self.call_next_step_srv()
 
         state = [self.position_x, self.position_y,self.position_z,
@@ -206,3 +222,23 @@ class World:
             done = True
 
         return state, reward, done, Empty
+
+if __name__ == '__main__':
+    print "Connecting"
+    udp = mavutil.mavudp('127.0.0.1:14560', source_system=0)  #gazebo
+    rospy.init_node('listener', anonymous=True)
+    rate = rospy.Rate(500) # 10hz
+    env = World()
+    # env.seed(0)
+    rospy.Subscriber("/gazebo/model_states", ModelStates, env.model_states_callback)
+    while not rospy.is_shutdown():
+        prev_states = env.reset()
+        target = [1, 1, 4]
+        for i in range(5000):
+            actions = ctrl.update(target, prev_states)
+            a_extend = np.concatenate((actions, np.zeros(4, dtype=int)))
+            states, reward, done, info = env.step(a_extend)
+            # states, reward, done, info = env.step([0, 0, 0, 0 ,0,0,0,0])
+            prev_states = states
+            # if i % 10 == 0:
+            #     print a_extend

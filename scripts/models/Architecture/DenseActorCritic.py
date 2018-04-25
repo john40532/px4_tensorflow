@@ -25,7 +25,7 @@ class Actor(Model):
             actor = BUILD_NET(actor,
                               [self.act_dim],
                               "Action_Output",
-                              tf.nn.tanh,
+                              tf.nn.sigmoid,
                               trainable=train)
             actor = tf.multiply(actor, self.act_bound, name="Scaled_Action")
         return actor
