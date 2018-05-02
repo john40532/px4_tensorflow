@@ -55,7 +55,7 @@ CONTROLLER_PARAMETERS = {'Motor_limits':[10,1100],
                     'Tilt_limits':[-10,10],
                     'Yaw_Control_Limits':[-500,500],
                     'Z_XY_offset':5000,
-                    'Linear_PID':{'P':[0.8,0.8,1200],'I':[0,0,100],'D':[0.5,0.5,500]},
+                    'Linear_PID':{'P':[0.8,0.8,1200],'I':[0.01,0.01,100],'D':[0.5,0.5,500]},
                     'Linear_To_Angular_Scaler':[1,1,0],
                     'Yaw_Rate_Scaler':0.5,
                     'Angular_PID':{'P':[500,500,10],'I':[20,20,10],'D':[100,100,0]},
@@ -69,12 +69,11 @@ env = world()
 env.seed(121)
 if __name__ == '__main__':
     while True:
-        target = [0, 0, 4]
         s_ = env.reset()
         done = False
         R = 0
         while not done:
-            a = ctrl.update(target, s_)
+            a = ctrl.updatePD(env.target, s_)
             a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
             s, r, done, info = env.step(a_extend)
             R+=r

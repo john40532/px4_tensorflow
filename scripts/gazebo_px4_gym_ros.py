@@ -233,7 +233,7 @@ class World:
         self.udp.recv_msg()
         self.call_next_step_srv()
 
-        state = [self.position_x, self.position_y,self.position_z,
+        state = [self.position_x,self.position_y,self.position_z,
                  self.orientation_x,self.orientation_y,self.orientation_z,self.orientation_w,
                  self.linear_x, self.linear_y, self.linear_z, 
                  self.angular_x, self.angular_y, self.angular_z]

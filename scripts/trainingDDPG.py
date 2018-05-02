@@ -91,12 +91,11 @@ def TRAIN(TASK_DICT):
 
         print("Start Training")
         while not agent.memory.Full:
-            target = [0, 0, 5]
             s_ = env.reset()
             done = False
             R = 0
             while not done:
-                a = ctrl.update(target, s_)
+                a = ctrl.update(env.target, s_)
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
                 s, r, done, info = env.step(a_extend)
                 R+=r
