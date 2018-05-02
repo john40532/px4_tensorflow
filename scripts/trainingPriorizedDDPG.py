@@ -6,10 +6,9 @@ import json
 from datetime import datetime
 
 import models.Architecture.DenseActorCritic as AC
-from models.DDPG import DDPG as ddpg
+from models.PrioritizedDDPG import DDPG as ddpg
 from gazebo_px4_gym_ros import World as world
 from Quadcopter_simulator.controller import Controller_PID_Point2Point
-
 
 # Controller parameters
 CONTROLLER_PARAMETERS = {'Motor_limits':[10,1100],
@@ -26,28 +25,25 @@ CONTROLLER_PARAMETERS = {'Motor_limits':[10,1100],
 
 ctrl = Controller_PID_Point2Point(params=CONTROLLER_PARAMETERS)
 
-
-
 TASK = {
     "model"               : "DDPG",
-    "ENV_NAME"            : "Quadcopter",
-    "actor"               : [128,128],
-    "critic"              : [64,64],
-    "actor learning rate" : 0.01,
-    "critic learning rate": 0.02,
-    "gamma"               : .9,
-    "tau"                 : .01,
-    "memory capacity"     : 10000,
-    "batch size"          : 32,
-    "MAX_EPI"             : 500
+    "ENV_NAME"            : "LunarLanderContinuous-v2",
+    "actor"               : [128,128,128],
+    "critic"              : [128],
+    "actor learning rate" : 1e-4,
+    "critic learning rate": 1e-3,
+    "gamma"               : .99,
+    "tau"                 : .001,
+    "memory capacity"     : 2**13,
+    "batch size"          : 128,
+    "MAX_EPI"             : 4000
         }
 
 def ACTION_NOISE(MAX_EPI):
-    alpha = -10*np.log(2)/MAX_EPI
-    c = 0.0001
+    alpha = -4*np.log(2)/MAX_EPI
+    c = 0.001
     for epi in range(MAX_EPI):
         yield epi, (1-c)*np.exp(alpha*epi)+c
-
 
 def TRAIN(TASK_DICT):
     tf.reset_default_graph()
@@ -65,7 +61,7 @@ def TRAIN(TASK_DICT):
         f.write(json.dumps(TASK_DICT, sort_keys=True, indent=4))
 
     env = world()
-    env.seed(121)
+    env.seed(0)
 
     obs_dim = 13
     act_dim = 4
@@ -85,6 +81,7 @@ def TRAIN(TASK_DICT):
     merged = tf.summary.merge_all()
 
     with tf.Session() as sess:
+        save = tf.train.Saver()
         Writer = tf.summary.FileWriter(LOGDIR, sess.graph)
         sess.run(tf.global_variables_initializer())
         sess.run(agent.init_update)
@@ -113,11 +110,13 @@ def TRAIN(TASK_DICT):
             done = False
             R = 0
             while not done:
+#                env.render()
                 if agent.memory.Full:
                     agent.training_tf(sess)
-
+                
                 if np.random.random()>var:
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
+                    a = np.clip(np.random.normal(a,var), 0, a_bound)
                 else:
                     a = np.random.randint(0, high=1100, size=4)
 
@@ -133,7 +132,9 @@ def TRAIN(TASK_DICT):
             summ = tf.Summary(value=[tf.Summary.Value(tag="var", simple_value=var)])
             Writer.add_summary(summ, epi)
             print("EPI:{},\tScore:{},\tVAR:{}".format(epi, R, var))
-    save = tf.train.Saver()
-    save.save(sess, TMPDIR+"DDPG")
+            if epi%1000 == 999:
+                save.save(sess, TMPDIR+"/PrioritizedDDPG", global_step = epi)
 
-TRAIN(TASK)
+for shape in [[64], [64,64], [128]]:
+  TASK['critic'] = shape
+  TRAIN(TASK)

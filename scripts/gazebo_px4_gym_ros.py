@@ -49,7 +49,7 @@ from gazebo_msgs.srv import SetModelState
 
 
 class World:
-    def __init__(self):
+    def __init__(self, target=[0,0,5]):
         self.iris_index = 2
         self.position_x = 0
         self.position_y = 0
@@ -57,7 +57,7 @@ class World:
         self.orientation_x = 0
         self.orientation_y = 0
         self.orientation_z = 0
-        self.orientation_w = 0
+        self.orientation_w = 1
         self.linear_x = 0
         self.linear_y = 0
         self.linear_z = 0
@@ -65,6 +65,7 @@ class World:
         self.angular_y = 0
         self.angular_z = 0
         self.random_seed = None
+        self.target = target
 
         print "Connecting..."
         self.udp = mavutil.mavudp('127.0.0.1:14560', source_system=0)  #gazebo
@@ -85,16 +86,55 @@ class World:
         self.random_seed = seed_num
 
 
+    # def randQ(self):
+    #     sigma1 = math.sqrt(1.0 - random.random())
+    #     sigma2 = math.sqrt(random.random())
+    #     theta1 = 2*math.pi*random.random()/60
+    #     theta2 = 2*math.pi*random.random()/60
+    #     w = math.cos(theta2)*sigma2
+    #     x = math.sin(theta1)*sigma1
+    #     y = math.cos(theta1)*sigma1
+    #     z = math.sin(theta2)*sigma2
+    #     return w, x, y, z
+
     def randQ(self):
-        sigma1 = math.sqrt(1.0 - random.random())
-        sigma2 = math.sqrt(random.random())
-        theta1 = 2*math.pi*random.random()
-        theta2 = 2*math.pi*random.random()
-        w = math.cos(theta2)*sigma2
-        x = math.sin(theta1)*sigma1
-        y = math.cos(theta1)*sigma1
-        z = math.sin(theta2)*sigma2
+        angle = math.pi/5
+        yaw = random.uniform(-angle, angle)
+        roll = random.uniform(-angle, angle)
+        pitch = random.uniform(-angle, angle)
+        cy = math.cos(yaw * 0.5);
+        sy = math.sin(yaw * 0.5);
+        cr = math.cos(roll * 0.5);
+        sr = math.sin(roll * 0.5);
+        cp = math.cos(pitch * 0.5);
+        sp = math.sin(pitch * 0.5);
+
+        w = cy * cr * cp + sy * sr * sp
+        x = cy * sr * cp - sy * cr * sp
+        y = cy * cr * sp + sy * sr * cp
+        z = sy * cr * cp - cy * sr * sp
         return w, x, y, z
+
+    def angleDone(self, w, x, y, z):
+        ysqr = y * y
+        
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + ysqr)
+        X = math.atan2(t0, t1)
+        
+        t2 = +2.0 * (w * y - z * x)
+        t2 = +1.0 if t2 > +1.0 else t2
+        t2 = -1.0 if t2 < -1.0 else t2
+        Y = math.asin(t2)
+        
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (ysqr + z * z)
+        Z = math.atan2(t3, t4)
+        
+        if abs(X) > math.pi/2 or abs(Y) > math.pi/2:
+            return True
+        else:
+            return False
 
     def reset(self):
         rospy.wait_for_service('/gazebo/reset_world')
@@ -117,12 +157,12 @@ class World:
             init_model_state.pose.orientation.y = y
             init_model_state.pose.orientation.z = z
             init_model_state.pose.orientation.w = w
-            init_model_state.twist.linear.x = random.uniform(-1,1)
-            init_model_state.twist.linear.y = random.uniform(-1,1)
-            init_model_state.twist.linear.z = random.uniform(-1,1)
-            init_model_state.twist.angular.x = random.uniform(-1,1)
-            init_model_state.twist.angular.y = random.uniform(-1,1)
-            init_model_state.twist.angular.z = random.uniform(-1,1)
+            # init_model_state.twist.linear.x = random.uniform(-1,1)
+            # init_model_state.twist.linear.y = random.uniform(-1,1)
+            # init_model_state.twist.linear.z = random.uniform(-1,1)
+            # init_model_state.twist.angular.x = random.uniform(-1,1)
+            # init_model_state.twist.angular.y = random.uniform(-1,1)
+            # init_model_state.twist.angular.z = random.uniform(-1,1)
             init_model_state.reference_frame = 'world'
 
         else:
@@ -168,12 +208,12 @@ class World:
         self.orientation_y = data.pose[self.iris_index].orientation.y
         self.orientation_z = data.pose[self.iris_index].orientation.z
         self.orientation_w = data.pose[self.iris_index].orientation.w
-        # self.linear_x = data.twist[self.iris_index].linear.x
-        # self.linear_y = data.twist[self.iris_index].linear.y
-        # self.linear_z = data.twist[self.iris_index].linear.z
-        # self.angular_x = data.twist[self.iris_index].angular.x
-        # self.angular_y = data.twist[self.iris_index].angular.y
-        # self.angular_z = data.twist[self.iris_index].angular.z
+        self.linear_x = data.twist[self.iris_index].linear.x
+        self.linear_y = data.twist[self.iris_index].linear.y
+        self.linear_z = data.twist[self.iris_index].linear.z
+        self.angular_x = data.twist[self.iris_index].angular.x
+        self.angular_y = data.twist[self.iris_index].angular.y
+        self.angular_z = data.twist[self.iris_index].angular.z
 
 
     def step(self, actuator_cmd):
@@ -198,11 +238,20 @@ class World:
                  self.linear_x, self.linear_y, self.linear_z, 
                  self.angular_x, self.angular_y, self.angular_z]
 
-        distance = math.sqrt((self.position_x)**2 + (self.position_y)**2 + (self.position_z-5)**2)
-        reward = math.exp(distance);
+        distance = math.sqrt((self.position_x-self.target[0])**2 + 
+                             (self.position_y-self.target[1])**2 + 
+                             (self.position_z-self.target[2])**2)
+        horizon = math.sqrt((self.orientation_x)**2 + 
+                             (self.orientation_y)**2)
+        reward = (1/horizon) + (0.3/distance) - 1;
 
         done = False
-        if distance > 3:
+        if distance > 3 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):
             done = True
+            reward -= 10000
+
+        if distance < 0.1:
+            done = True
+            reward += 1000
 
         return state, reward, done, Empty
