@@ -243,7 +243,7 @@ class World:
                              (self.position_z-self.target[2])**2)
         horizon = math.sqrt((self.orientation_x)**2 + 
                              (self.orientation_y)**2)
-        reward = (1/horizon) + (0.3/distance) - 1;
+        reward = (1/horizon) + (1/distance) - 3;
 
         done = False
         if distance > 3 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):
@@ -252,6 +252,6 @@ class World:
 
         if distance < 0.1:
             done = True
-            reward += 1000
+            reward += 10000
 
         return state, reward, done, Empty

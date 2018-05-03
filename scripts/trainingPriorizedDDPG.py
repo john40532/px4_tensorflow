@@ -117,7 +117,7 @@ def TRAIN(TASK_DICT):
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
                     a = np.clip(np.random.normal(a,var), 0, a_bound)
                 else:
-                    a = ctrl.update(env.target, s_)
+                    a = ctrl.updatePD(env.target, s)
 
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
                 s_, r, done, info = env.step(a_extend)

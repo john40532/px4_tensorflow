@@ -65,7 +65,7 @@ def TRAIN(TASK_DICT):
         f.write(json.dumps(TASK_DICT, sort_keys=True, indent=4))
 
     env = world()
-    env.seed(121)
+    env.seed(0)
 
     obs_dim = 13
     act_dim = 4
@@ -118,7 +118,7 @@ def TRAIN(TASK_DICT):
                 if np.random.random()>var:
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
                 else:
-                    a = np.random.randint(0, high=1100, size=4)
+                    a = ctrl.updatePD(env.target, s)
 
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
                 s_, r, done, info = env.step(a_extend)
