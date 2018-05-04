@@ -15,7 +15,7 @@ CONTROLLER_PARAMETERS = {'Motor_limits':[10,1100],
                     'Tilt_limits':[-10,10],
                     'Yaw_Control_Limits':[-500,500],
                     'Z_XY_offset':5000,
-                    'Linear_PID':{'P':[0.8,0.8,1200],'I':[0,0,100],'D':[0.5,0.5,500]},
+                    'Linear_PID':{'P':[0.2,0.2,1200],'I':[0.01,0.01,100],'D':[0.02,0.02,500]},
                     'Linear_To_Angular_Scaler':[1,1,0],
                     'Yaw_Rate_Scaler':0.5,
                     'Angular_PID':{'P':[500,500,10],'I':[20,20,10],'D':[100,100,0]},
@@ -43,7 +43,7 @@ def ACTION_NOISE(MAX_EPI):
     alpha = -4*np.log(2)/MAX_EPI
     c = 0.001
     for epi in range(MAX_EPI):
-        yield epi, (1-c)*np.exp(alpha*epi)+c
+        yield epi, 0.8*((1-c)*np.exp(alpha*epi)+c)
 
 def TRAIN(TASK_DICT):
     tf.reset_default_graph()
@@ -88,20 +88,21 @@ def TRAIN(TASK_DICT):
 
         print("Start Training")
         while not agent.memory.Full:
-            s_ = env.reset()
+            s = env.reset()
             done = False
             R = 0
+            a = np.zeros(4)
             while not done:
-                a = ctrl.update(env.target, s_)
+                a = ctrl.update(env.target, s)
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
-                s, r, done, info = env.step(a_extend)
+                s_next, r, done, info = env.step(a_extend)
                 R+=r
-                agent.memory.store(s,a,r,s_,done)
-                s_=s
+                agent.memory.store(s,a,r,s_next,done)
+                s=s_next
             print("Score:{}".format(R))
         print "Finish sampling"
         print "Training......"
-        for i in range(5000):
+        for i in range(100000):
             agent.training_tf(sess)
         env.seed(121)
         for epi, var in ACTION_NOISE(TASK_DICT["MAX_EPI"]):
@@ -120,10 +121,10 @@ def TRAIN(TASK_DICT):
                     a = ctrl.updatePD(env.target, s)
 
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
-                s_, r, done, info = env.step(a_extend)
+                s_next, r, done, info = env.step(a_extend)
                 R+=r
-                agent.memory.store(s,a,r,s_,done)
-                s=s_
+                agent.memory.store(s,a,r,s_next,done)
+                s=s_next
             summary = sess.run(merged)
             Writer.add_summary(summary, epi)
             summ = tf.Summary(value=[tf.Summary.Value(tag="Score", simple_value=R)])

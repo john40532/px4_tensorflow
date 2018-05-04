@@ -41,12 +41,10 @@ import roslaunch
 import time, sys, argparse, math
 import random
 import numpy as np
+import csv
+import os
+import sys
 from pymavlink import mavutil
-from rosgraph_msgs.msg import Clock
-from gazebo_msgs.msg import ModelStates
-from gazebo_msgs.msg import ModelState
-from std_srvs.srv import Empty
-from gazebo_msgs.srv import SetModelState
 from Quadcopter_simulator.controller import Controller_PID_Point2Point
 from gazebo_px4_gym_ros import World as world
 
@@ -55,26 +53,40 @@ CONTROLLER_PARAMETERS = {'Motor_limits':[10,1100],
                     'Tilt_limits':[-10,10],
                     'Yaw_Control_Limits':[-500,500],
                     'Z_XY_offset':5000,
-                    'Linear_PID':{'P':[0.8,0.8,1200],'I':[0.01,0.01,100],'D':[0.5,0.5,500]},
+                    'Linear_PID':{'P':[0.2,0.2,1200],'I':[0.01,0.01,100],'D':[0.02,0.02,500]},
                     'Linear_To_Angular_Scaler':[1,1,0],
                     'Yaw_Rate_Scaler':0.5,
                     'Angular_PID':{'P':[500,500,10],'I':[20,20,10],'D':[100,100,0]},
                     }
+
 
 # Make objects for quadcopter, gui and controller
 
 ctrl = Controller_PID_Point2Point(params=CONTROLLER_PARAMETERS)
 
 env = world()
-env.seed(121)
+env.seed(0)
 if __name__ == '__main__':
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    TMPDIR = dir_path + "/_tmp/training_sample/"
+    if not os.path.isdir(TMPDIR):
+        os.makedirs(TMPDIR)
+    file = open(TMPDIR+"sample.csv", "w")
+    csvCursor = csv.writer(file)
+
+    # write header to csv file
+    csvHeader = ['s', 'a', 'r', 's_next', 'done']
+    csvCursor.writerow(csvHeader)
+
     while True:
-        s_ = env.reset()
+        s = env.reset()
         done = False
         R = 0
         while not done:
-            a = ctrl.updatePD(env.target, s_)
+            a = ctrl.updatePD(env.target, s)
             a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
-            s, r, done, info = env.step(a_extend)
+            s_next, r, done, info = env.step(a_extend)
             R+=r
-            s_=s
+            s=s_next
+            log_data = [s, a, r, s_next, done]
+            csvCursor.writerow(log_data)

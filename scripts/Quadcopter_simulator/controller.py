@@ -108,8 +108,8 @@ class Controller_PID_Point2Point():
         [x,y,z,qx,qy,qz,qw,x_dot,y_dot,z_dot,theta_dot,phi_dot,gamma_dot] = state
         x_error = dest_x-x
         y_error = dest_y-y
-        x_error = np.clip(x_error,-1,1)
-        y_error = np.clip(y_error,-1,1)
+        x_error = np.clip(x_error,-2,2)
+        y_error = np.clip(y_error,-2,2)
 
         z_error = dest_z-z
         theta, phi, gamma = self.quaternion_to_euler_angle(qw, qx, qy, qz)

@@ -40,6 +40,7 @@ import rospy
 import roslaunch
 import time, sys, argparse, math
 import random
+import numpy as np
 from pymavlink import mavutil
 from rosgraph_msgs.msg import Clock
 from gazebo_msgs.msg import ModelStates
@@ -238,20 +239,27 @@ class World:
                  self.linear_x, self.linear_y, self.linear_z, 
                  self.angular_x, self.angular_y, self.angular_z]
 
-        distance = math.sqrt((self.position_x-self.target[0])**2 + 
-                             (self.position_y-self.target[1])**2 + 
-                             (self.position_z-self.target[2])**2)
-        horizon = math.sqrt((self.orientation_x)**2 + 
-                             (self.orientation_y)**2)
-        reward = (1/horizon) + (1/distance) - 3;
+
+        distance = np.linalg.norm([self.position_x-self.target[0], 
+                                   self.position_y-self.target[1], 
+                                   self.position_z-self.target[2]])
+        angle = np.linalg.norm([self.orientation_x,
+                                self.orientation_y])
+        linear_velocity = np.linalg.norm([self.linear_x,
+                                          self.linear_y,
+                                          self.linear_z])
+        angular_velocity = np.linalg.norm([self.angular_x,
+                                           self.angular_y,
+                                           self.angular_z])
+        reward = -(0.004*distance + 0.0002*angle + 0.0003*linear_velocity + 0.0005*angular_velocity);
 
         done = False
         if distance > 3 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):
             done = True
-            reward -= 10000
+            reward -= 5
 
         if distance < 0.1:
             done = True
-            reward += 10000
+            reward += 5
 
         return state, reward, done, Empty
