@@ -75,9 +75,9 @@ if __name__ == '__main__':
     csvCursor = csv.writer(file)
 
     # write header to csv file
-    csvHeader = ['s', 'a', 'r', 's_next', 'done']
-    csvCursor.writerow(csvHeader)
-
+    # csvHeader = ['s', 'a', 'r', 's_next', 'done']
+    # csvCursor.writerow(csvHeader)
+    count = 0
     while True:
         s = env.reset()
         done = False
@@ -88,5 +88,8 @@ if __name__ == '__main__':
             s_next, r, done, info = env.step(a_extend)
             R+=r
             s=s_next
-            log_data = [s, a, r, s_next, done]
+            log_data = np.concatenate((s, a, [r], s_next, [done]))
             csvCursor.writerow(log_data)
+            count += 1
+            if count%1000 == 0:
+                print count

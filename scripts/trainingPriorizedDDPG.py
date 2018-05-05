@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import json
+import csv
 from datetime import datetime
 
 import models.Architecture.DenseActorCritic as AC
@@ -34,7 +35,7 @@ TASK = {
     "critic learning rate": 1e-3,
     "gamma"               : .99,
     "tau"                 : .001,
-    "memory capacity"     : 2**13,
+    "memory capacity"     : 2**16,
     "batch size"          : 128,
     "MAX_EPI"             : 4000
         }
@@ -49,16 +50,20 @@ def TRAIN(TASK_DICT):
     tf.reset_default_graph()
     now = datetime.now()
     date = now.strftime('%Y%m%d_%H%M')
-    LOGDIR = "./_logs/{}/{}_{}".format(TASK_DICT["ENV_NAME"], 
+    DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+    LOGDIR = DIR_PATH + "/../_logs/{}/{}_{}".format(TASK_DICT["ENV_NAME"], 
                                        TASK_DICT["model"],
                                        date)
-    TMPDIR = "./_tmp/model/{}_{}/".format(TASK_DICT["ENV_NAME"],
+    TMPDIR = DIR_PATH + "/../_tmp/model/{}_{}/".format(TASK_DICT["ENV_NAME"],
                                           date)
+    SAMPELDIR = DIR_PATH + "/../_tmp/training_sample/"
     if not os.path.isdir(TMPDIR):
         os.makedirs(TMPDIR)
 
     with open(TMPDIR+"log", "w") as f:
         f.write(json.dumps(TASK_DICT, sort_keys=True, indent=4))
+
+    sample_file = open(SAMPELDIR+"sample.csv", "r")
 
     env = world()
     env.seed(0)
@@ -87,24 +92,17 @@ def TRAIN(TASK_DICT):
         sess.run(agent.init_update)
 
         print("Start Training")
-        while not agent.memory.Full:
-            s = env.reset()
-            done = False
-            R = 0
-            a = np.zeros(4)
-            while not done:
-                a = ctrl.update(env.target, s)
-                a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
-                s_next, r, done, info = env.step(a_extend)
-                R+=r
-                agent.memory.store(s,a,r,s_next,done)
-                s=s_next
-            print("Score:{}".format(R))
+        for row in csv.reader(sample_file):
+            if not agent.memory.Full:
+                agent.memory.store(row[0:13],row[13:17],row[17],row[18:31],row[31])
+            else:
+                sample_file.close()
+                break
         print "Finish sampling"
         print "Training......"
-        for i in range(100000):
+        for i in range(10000):
             agent.training_tf(sess)
-        env.seed(121)
+        env.seed(0)
         for epi, var in ACTION_NOISE(TASK_DICT["MAX_EPI"]):
             s = env.reset()
             done = False
@@ -116,9 +114,10 @@ def TRAIN(TASK_DICT):
                 
                 if np.random.random()>var:
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
-                    a = np.clip(np.random.normal(a,var), 0, a_bound)
+                    a = np.clip(np.random.normal(a,var**2), 0, a_bound)
                 else:
                     a = ctrl.updatePD(env.target, s)
+                    # a = np.random.randint(0,1100,size=4)
 
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
                 s_next, r, done, info = env.step(a_extend)
