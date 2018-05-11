@@ -150,20 +150,20 @@ class World:
             if self.random_seed != 0:
                 random.seed(self.random_seed)
             init_model_state.model_name = 'iris'
-            init_model_state.pose.position.x = random.uniform(-2,2)
-            init_model_state.pose.position.y = random.uniform(-2,2)
-            init_model_state.pose.position.z = random.uniform(4,6)
+            init_model_state.pose.position.x = random.uniform(-3,3)
+            init_model_state.pose.position.y = random.uniform(-3,3)
+            init_model_state.pose.position.z = random.uniform(2,8)
             w, x, y, z = self.randQ()
             init_model_state.pose.orientation.x = x
             init_model_state.pose.orientation.y = y
             init_model_state.pose.orientation.z = z
             init_model_state.pose.orientation.w = w
-            # init_model_state.twist.linear.x = random.uniform(-1,1)
-            # init_model_state.twist.linear.y = random.uniform(-1,1)
-            # init_model_state.twist.linear.z = random.uniform(-1,1)
-            # init_model_state.twist.angular.x = random.uniform(-1,1)
-            # init_model_state.twist.angular.y = random.uniform(-1,1)
-            # init_model_state.twist.angular.z = random.uniform(-1,1)
+            init_model_state.twist.linear.x = random.uniform(-1,1)
+            init_model_state.twist.linear.y = random.uniform(-1,1)
+            init_model_state.twist.linear.z = random.uniform(-1,1)
+            init_model_state.twist.angular.x = random.uniform(-1,1)
+            init_model_state.twist.angular.y = random.uniform(-1,1)
+            init_model_state.twist.angular.z = random.uniform(-1,1)
             init_model_state.reference_frame = 'world'
 
         else:
@@ -244,7 +244,8 @@ class World:
                                    self.position_y-self.target[1], 
                                    self.position_z-self.target[2]])
         angle = np.linalg.norm([self.orientation_x,
-                                self.orientation_y])
+                                self.orientation_y,
+                                self.orientation_z])
         linear_velocity = np.linalg.norm([self.linear_x,
                                           self.linear_y,
                                           self.linear_z])
@@ -254,9 +255,9 @@ class World:
         reward = -(0.004*distance + 0.0002*angle + 0.0003*linear_velocity + 0.0005*angular_velocity);
 
         done = False
-        if distance > 3 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):
+        if distance > 5 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):
             done = True
-            reward -= 5
+            reward -= 10
 
         if distance < 0.1:
             done = True

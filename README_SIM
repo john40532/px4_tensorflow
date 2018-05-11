@@ -1,0 +1,22 @@
+
+---Compile
+make posix_sitl_default gazebo
+
+---run normal simulation. px4_posix_sitl.launch is use for turning on pixhawk simulate flight computer.
+roslaunch px4 posix_sitl.launch
+roslaunch px4 px4_posix_sitl.launch
+
+---run tensorflow only
+roslaunch px4 posix_sitl.launch
+
+---tensorflow scripts
+rosrun px4_tensorflow gazebo_px4_gym_ros.py
+rosrun px4_tensorflow gazebo_px4_gym_PID_control.py
+rosrun px4_tensorflow trainingDDPG.py
+
+---view tensorboard
+tensorboard --logdir=../
+http://localhost:6006/
+
+
+

@@ -67,26 +67,33 @@ ctrl = Controller_PID_Point2Point(params=CONTROLLER_PARAMETERS)
 env = world()
 env.seed(0)
 if __name__ == '__main__':
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    TMPDIR = dir_path + "/_tmp/training_sample/"
-    if not os.path.isdir(TMPDIR):
-        os.makedirs(TMPDIR)
-    file = open(TMPDIR+"sample.csv", "w")
-    csvCursor = csv.writer(file)
+    save_file = True
+    if save_file is True:
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        TMPDIR = dir_path + "/../_tmp/training_sample/"
+        if not os.path.isdir(TMPDIR):
+            os.makedirs(TMPDIR)
+        file = open(TMPDIR+"sample1.csv", "w")
+        csvCursor = csv.writer(file)
 
-    # write header to csv file
-    csvHeader = ['s', 'a', 'r', 's_next', 'done']
-    csvCursor.writerow(csvHeader)
-
+    count = 0
+    iteration = 0
     while True:
         s = env.reset()
         done = False
         R = 0
+        if count > 2**19:
+            break
         while not done:
             a = ctrl.updatePD(env.target, s)
             a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
             s_next, r, done, info = env.step(a_extend)
             R+=r
             s=s_next
-            log_data = [s, a, r, s_next, done]
-            csvCursor.writerow(log_data)
+            log_data = np.concatenate((s, a/1100, [r], s_next, [done]))
+            if save_file is True:
+                csvCursor.writerow(log_data)
+                count += 1
+                if count%1000 == 0:
+                    print count
+

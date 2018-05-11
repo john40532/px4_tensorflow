@@ -137,10 +137,10 @@ class Controller_PID_Point2Point():
         y_val = np.clip(y_val,self.YAW_CONTROL_LIMITS[0],self.YAW_CONTROL_LIMITS[1])
         z_val = np.clip(z_val,self.YAW_CONTROL_LIMITS[0],self.YAW_CONTROL_LIMITS[1])
 
-        m1 = throttle - 0.5*x_val - 0.5*y_val - z_val + 550
-        m2 = throttle + 0.5*x_val + 0.5*y_val - z_val + 550
-        m3 = throttle + 0.5*x_val - 0.5*y_val + z_val + 550
-        m4 = throttle - 0.5*x_val + 0.5*y_val + z_val + 550
+        m1 = throttle - 0.5*x_val - 0.5*y_val - z_val + 600
+        m2 = throttle + 0.5*x_val + 0.5*y_val - z_val + 600
+        m3 = throttle + 0.5*x_val - 0.5*y_val + z_val + 600
+        m4 = throttle - 0.5*x_val + 0.5*y_val + z_val + 600
         M = np.clip([m1,m2,m3,m4],self.MOTOR_LIMITS[0],self.MOTOR_LIMITS[1])
         return M
 
