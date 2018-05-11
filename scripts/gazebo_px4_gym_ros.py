@@ -257,7 +257,7 @@ class World:
         done = False
         if distance > 5 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):
             done = True
-            # reward -= 5
+            reward -= 10
 
         if distance < 0.1:
             done = True

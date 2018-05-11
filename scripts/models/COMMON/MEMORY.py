@@ -90,6 +90,25 @@ class Memory:
       self._full = True
       self._count = 0
 
+  def store_train(
+      self,
+      state, 
+      action, 
+      reward, 
+      state_,
+      term
+  ):
+    self.states[self._count] = state
+    self.state_s[self._count] = state_
+    self.actions[self._count] = action
+    self.rewards[self._count] = reward
+    self.terms[self._count] = term
+
+    self._count+=1
+    if self._count == self.capacity:
+      self._full = True
+      self._count = self.capacity/2
+
   def random_idxs(self):
     return np.random.choice(self.capacity, size=self.mini_batch)
 

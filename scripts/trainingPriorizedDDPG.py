@@ -29,22 +29,22 @@ ctrl = Controller_PID_Point2Point(params=CONTROLLER_PARAMETERS)
 TASK = {
     "model"               : "DDPG",
     "ENV_NAME"            : "LunarLanderContinuous-v2",
-    "actor"               : [128,128,128],
+    "actor"               : [1024,1024,1024],
     "critic"              : [128],
     "actor learning rate" : 1e-4,
     "critic learning rate": 1e-3,
     "gamma"               : .99,
     "tau"                 : .001,
-    "memory capacity"     : 2**16,
+    "memory capacity"     : 2**19,
     "batch size"          : 128,
     "MAX_EPI"             : 4000
         }
 
 def ACTION_NOISE(MAX_EPI):
-    alpha = -4*np.log(2)/MAX_EPI
+    alpha = -8*np.log(2)/MAX_EPI
     c = 0.001
     for epi in range(MAX_EPI):
-        yield epi, 0.8*((1-c)*np.exp(alpha*epi)+c)
+        yield epi, ((1-c)*np.exp(alpha*epi)+c)
 
 def TRAIN(TASK_DICT):
     tf.reset_default_graph()
@@ -63,14 +63,14 @@ def TRAIN(TASK_DICT):
     with open(TMPDIR+"log", "w") as f:
         f.write(json.dumps(TASK_DICT, sort_keys=True, indent=4))
 
-    sample_file = open(SAMPELDIR+"sample.csv", "r")
+    sample_file = open(SAMPELDIR+"sample1.csv", "r")
 
     env = world()
     env.seed(0)
 
     obs_dim = 13
     act_dim = 4
-    a_bound = 1100
+    a_bound = 1
 
     actor  = AC.Actor(act_dim, a_bound, TASK_DICT["actor"])
     critic = AC.Critic(TASK_DICT["critic"])
@@ -100,21 +100,21 @@ def TRAIN(TASK_DICT):
                 break
         print "Finish sampling"
         print "Training......"
-        for i in range(10000):
+        for i in range(1000):
             agent.training_tf(sess)
         env.seed(0)
         for epi, var in ACTION_NOISE(TASK_DICT["MAX_EPI"]):
             s = env.reset()
             done = False
             R = 0
+            counter = 0
+
             while not done:
-#                env.render()
-                if agent.memory.Full:
+            	if agent.memory.Full:
                     agent.training_tf(sess)
-                
                 if np.random.random()>var:
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
-                    a = np.clip(np.random.normal(a,var**2), 0, a_bound)
+                    a = np.clip(np.random.normal(a,var), 0, a_bound)*1100
                 else:
                     a = ctrl.updatePD(env.target, s)
                     # a = np.random.randint(0,1100,size=4)
@@ -122,8 +122,14 @@ def TRAIN(TASK_DICT):
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
                 s_next, r, done, info = env.step(a_extend)
                 R+=r
-                agent.memory.store(s,a,r,s_next,done)
-                s=s_next
+                if counter > 5000:
+        		    done = True
+        		    agent.memory.store(s,a/1100,r,s_next,done)
+        		    break
+                else:
+    	            agent.memory.store(s,a/1100,r,s_next,done)
+                    s=s_next
+	        counter += 1
             summary = sess.run(merged)
             Writer.add_summary(summary, epi)
             summ = tf.Summary(value=[tf.Summary.Value(tag="Score", simple_value=R)])
