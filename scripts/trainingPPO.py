@@ -70,8 +70,12 @@ for ep in range(EP_MAX):
             ppo.update(bs, ba, br)
             if done == True:
                 break
-    if ep == 0: all_ep_r.append(ep_r)
-    else: all_ep_r.append(all_ep_r[-1]*0.9 + ep_r*0.1)
+    # if ep == 0: 
+    #     all_ep_r.append(ep_r)
+    # else: 
+    #     all_ep_r.append(all_ep_r[-1]*0.9 + ep_r*0.1)
+    summ = tf.Summary(value=[tf.Summary.Value(tag="Score", simple_value=ep_r)])
+    ppo.writer.add_summary(summ, ep)
     print(
         'Ep: %i' % ep,
         "|Ep_r: %i" % ep_r,

@@ -68,7 +68,7 @@ class DDPG:
                 self.targetQ = tf.add(self.rewards, (1-self.term)*self.gamma*Q_obs1)
 
             with tf.name_scope("Actor"):
-                self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)
+                self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)# + || pd(state) - actor_tf ||
 
             with tf.name_scope("Critic"):
                 #targetQ = tf.stop_gradient(self.targetQ)

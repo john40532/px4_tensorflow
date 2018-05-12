@@ -72,7 +72,7 @@ class PPO(object):
         with tf.variable_scope('atrain'):
             self.atrain_op = tf.train.AdamOptimizer(ACTOR_LEARNING_RATE).minimize(self.aloss)
 
-        tf.summary.FileWriter("log/", self.sess.graph)
+        self.writer = tf.summary.FileWriter("log/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
 
