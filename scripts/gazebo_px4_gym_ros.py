@@ -261,6 +261,6 @@ class World:
 
         if distance < 0.1:
             done = True
-            reward += 5
+            reward += 10
 
         return state, reward, done, Empty
