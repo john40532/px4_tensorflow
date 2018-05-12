@@ -191,10 +191,10 @@ class World:
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
-        return [init_model_state.pose.position.x, init_model_state.pose.position.y, init_model_state.pose.position.z,
-                 init_model_state.pose.orientation.x, init_model_state.pose.orientation.y, init_model_state.pose.orientation.z, init_model_state.pose.orientation.w,
-                 init_model_state.twist.linear.x, init_model_state.twist.linear.y, init_model_state.twist.linear.z, 
-                 init_model_state.twist.angular.x, init_model_state.twist.angular.y, init_model_state.twist.angular.z]
+        return np.array([init_model_state.pose.position.x, init_model_state.pose.position.y, init_model_state.pose.position.z,
+                         init_model_state.pose.orientation.x, init_model_state.pose.orientation.y, init_model_state.pose.orientation.z, init_model_state.pose.orientation.w,
+                         init_model_state.twist.linear.x, init_model_state.twist.linear.y, init_model_state.twist.linear.z, 
+                         init_model_state.twist.angular.x, init_model_state.twist.angular.y, init_model_state.twist.angular.z])
 
     def delay(self):
     	i = 100000000
@@ -234,10 +234,10 @@ class World:
         self.udp.recv_msg()
         self.call_next_step_srv()
 
-        state = [self.position_x,self.position_y,self.position_z,
-                 self.orientation_x,self.orientation_y,self.orientation_z,self.orientation_w,
-                 self.linear_x, self.linear_y, self.linear_z, 
-                 self.angular_x, self.angular_y, self.angular_z]
+        state = np.array([self.position_x,self.position_y,self.position_z,
+                          self.orientation_x,self.orientation_y,self.orientation_z,self.orientation_w,
+                          self.linear_x, self.linear_y, self.linear_z, 
+                          self.angular_x, self.angular_y, self.angular_z])
 
 
         distance = np.linalg.norm([self.position_x-self.target[0], 
