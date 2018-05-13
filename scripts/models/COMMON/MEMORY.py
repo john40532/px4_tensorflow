@@ -65,6 +65,7 @@ class Memory:
     self.rewards = np.zeros(capacity, dtype=np.float32)
     self.state_s = np.zeros((capacity, state_dim), dtype=np.float32)
     self.terms   = np.zeros(capacity, dtype=np.float32)
+    self.pd_action = np.zeros((capacity, action_dim), dtype=np.float32)
     
     self.capacity = capacity
     self.mini_batch = mini_batch 
@@ -77,13 +78,15 @@ class Memory:
       action, 
       reward, 
       state_,
-      term
+      term,
+      pd_action
   ):
     self.states[self._count] = state
     self.state_s[self._count] = state_
     self.actions[self._count] = action
     self.rewards[self._count] = reward
     self.terms[self._count] = term
+    self.pd_action[self._count] = pd_action
 
     self._count+=1
     if self._count == self.capacity:
@@ -96,13 +99,15 @@ class Memory:
       action, 
       reward, 
       state_,
-      term
+      term,
+      pd_action
   ):
     self.states[self._count] = state
     self.state_s[self._count] = state_
     self.actions[self._count] = action
     self.rewards[self._count] = reward
     self.terms[self._count] = term
+    self.pd_action[self._count] = pd_action
 
     self._count+=1
     if self._count == self.capacity:
@@ -119,7 +124,8 @@ class Memory:
             self.actions[idxs], 
             self.rewards[idxs], 
             self.state_s[idxs],
-            self.terms[idxs])
+            self.terms[idxs],
+            self.pd_action[idxs])
 
   @property
   def Full(self):
@@ -149,9 +155,10 @@ class PrioritizedMemory(Memory):
     reward,
     state_,
     done,
+    pd_action,
     p = None
   ):
-    Memory.store(self, state, action, reward, state_, done)
+    Memory.store(self, state, action, reward, state_, done, pd_action)
     if p is None:
       if self.priTree.total_P < self._epsilon*self.capacity:
         p = 2*self._epsilon
