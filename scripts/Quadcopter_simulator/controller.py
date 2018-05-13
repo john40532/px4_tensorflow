@@ -141,6 +141,6 @@ class Controller_PID_Point2Point():
         m2 = throttle + 0.5*x_val + 0.5*y_val - z_val + 600
         m3 = throttle + 0.5*x_val - 0.5*y_val + z_val + 600
         m4 = throttle - 0.5*x_val + 0.5*y_val + z_val + 600
-        M = np.clip([m1,m2,m3,m4],self.MOTOR_LIMITS[0],self.MOTOR_LIMITS[1])
+        M = np.clip(np.array([m1,m2,m3,m4]),self.MOTOR_LIMITS[0],self.MOTOR_LIMITS[1])
         return M
 

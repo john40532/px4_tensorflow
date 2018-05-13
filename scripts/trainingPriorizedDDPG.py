@@ -28,14 +28,14 @@ ctrl = Controller_PID_Point2Point(params=CONTROLLER_PARAMETERS)
 
 TASK = {
     "model"               : "DDPG",
-    "ENV_NAME"            : "LunarLanderContinuous-v2",
-    "actor"               : [1024,1024,1024],
+    "ENV_NAME"            : "Quadcopter",
+    "actor"               : [128,128,128],
     "critic"              : [128],
     "actor learning rate" : 1e-4,
     "critic learning rate": 1e-3,
     "gamma"               : .99,
     "tau"                 : .001,
-    "memory capacity"     : 2**19,
+    "memory capacity"     : 2**13,
     "batch size"          : 128,
     "MAX_EPI"             : 4000
         }
@@ -44,7 +44,7 @@ def ACTION_NOISE(MAX_EPI):
     alpha = -8*np.log(2)/MAX_EPI
     c = 0.001
     for epi in range(MAX_EPI):
-        yield epi, ((1-c)*np.exp(alpha*epi)+c)
+        yield epi, 0.2*((1-c)*np.exp(alpha*epi)+c)
 
 def TRAIN(TASK_DICT):
     tf.reset_default_graph()
@@ -62,8 +62,6 @@ def TRAIN(TASK_DICT):
 
     with open(TMPDIR+"log", "w") as f:
         f.write(json.dumps(TASK_DICT, sort_keys=True, indent=4))
-
-    sample_file = open(SAMPELDIR+"sample1.csv", "r")
 
     env = world()
     env.seed(0)
@@ -91,18 +89,24 @@ def TRAIN(TASK_DICT):
         sess.run(tf.global_variables_initializer())
         sess.run(agent.init_update)
 
-        print("Start Training")
-        for row in csv.reader(sample_file):
-            if not agent.memory.Full:
-                agent.memory.store(row[0:13],row[13:17],row[17],row[18:31],row[31])
-            else:
-                sample_file.close()
-                break
-        print "Finish sampling"
+        # print("Start Training")
+        # while not agent.memory.Full:
+        #     s_ = env.reset()
+        #     done = False
+        #     R = 0
+        #     while not done:
+        #         a = ctrl.update(env.target, s_)
+        #         a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
+        #         s, r, done, info = env.step(a_extend)
+        #         R+=r
+        #         agent.memory.store(s,a,r,s_,done)
+        #         s_=s
+        #     print("Score:{}".format(R))
+        # print "Finish sampling"
+        # print "Training......"
+        # for i in range(5000):
+        #     agent.training_tf(sess)
         print "Training......"
-        for i in range(1000):
-            agent.training_tf(sess)
-        env.seed(0)
         for epi, var in ACTION_NOISE(TASK_DICT["MAX_EPI"]):
             s = env.reset()
             done = False
@@ -116,18 +120,18 @@ def TRAIN(TASK_DICT):
                     a = sess.run(agent.actor_tf, {agent.obs0:[s]})[0]
                     a = np.clip(np.random.normal(a,var), 0, a_bound)*1100
                 else:
-                    a = ctrl.updatePD(env.target, s)
-                    # a = np.random.randint(0,1100,size=4)
-
+                    a = np.random.randint(0,1100,size=4)
+                
+                a_PD = ctrl.updatePD(env.target, s)
                 a_extend = np.concatenate((a, np.zeros(4, dtype=int)))
                 s_next, r, done, info = env.step(a_extend)
                 R+=r
                 if counter > 5000:
         		    done = True
-        		    agent.memory.store(s,a/1100,r,s_next,done)
+        		    agent.memory.store(s,a/1100,r,s_next,done,a_PD/1100)
         		    break
                 else:
-    	            agent.memory.store(s,a/1100,r,s_next,done)
+    	            agent.memory.store(s,a/1100,r,s_next,done,a_PD/1100)
                     s=s_next
 	        counter += 1
             summary = sess.run(merged)

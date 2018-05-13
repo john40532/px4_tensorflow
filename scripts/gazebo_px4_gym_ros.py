@@ -229,8 +229,7 @@ class World:
                                           actuator_cmd[4],
                                           actuator_cmd[5],
                                           actuator_cmd[6],
-                                          actuator_cmd[7],
-                                          )
+                                          actuator_cmd[7])
         self.udp.recv_msg()
         self.call_next_step_srv()
 
@@ -252,7 +251,15 @@ class World:
         angular_velocity = np.linalg.norm([self.angular_x,
                                            self.angular_y,
                                            self.angular_z])
-        reward = -(0.004*distance + 0.0002*angle + 0.0003*linear_velocity + 0.0005*angular_velocity);
+        actuator_output = np.linalg.norm([actuator_cmd[0],
+                                          actuator_cmd[1],
+                                          actuator_cmd[2],
+                                          actuator_cmd[3],
+                                          actuator_cmd[4],
+                                          actuator_cmd[5],
+                                          actuator_cmd[6],
+                                          actuator_cmd[7]])/1100
+        reward = -(0.004*distance + 0.0002*actuator_output + 0.0003*linear_velocity + 0.0005*angular_velocity);
 
         done = False
         if distance > 5 or self.angleDone(self.orientation_w,self.orientation_x,self.orientation_y,self.orientation_z):

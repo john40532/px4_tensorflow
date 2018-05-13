@@ -19,6 +19,7 @@ class DDPG:
         self.term = tf.placeholder(tf.float32, (None, 1)                , name = "term")
         self.rewards = tf.placeholder(tf.float32, (None, 1)             , name = "rewards")
         self.ISweights = tf.placeholder(tf.float32, (None, 1)           , name = "ISweight")
+        self.PD_actior = tf.placeholder(tf.float32, (None,)+action_shape, name = "PD_action")
 
         self.gamma = tf.constant(gamma, name = "gamma")
         self.tau   = tf.constant(tau,   name = "tau")
@@ -68,7 +69,7 @@ class DDPG:
                 self.targetQ = tf.add(self.rewards, (1-self.term)*self.gamma*Q_obs1)
 
             with tf.name_scope("Actor"):
-                self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)# + || pd(state) - actor_tf ||
+                self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf) + tf.reduce_mean(self.PD_actior - self.actor_tf)
 
             with tf.name_scope("Critic"):
                 #targetQ = tf.stop_gradient(self.targetQ)
@@ -82,25 +83,27 @@ class DDPG:
     def training_tf(self, sess):
         idxs, ISweights = self.memory.prioritizedSampling()
         idxs = idxs.astype("int32")
-        states, actions, rewards, state_s, terms = self.memory.batch(idxs)
+        states, actions, rewards, state_s, terms, PD_action = self.memory.batch(idxs)
         
         sess.run(self.actorTraining, {self.obs0: states,
-                                      self.ISweights: ISweights.reshape((-1,1))})
+                                      self.ISweights: ISweights.reshape((-1,1)),
+                                      self.PD_actior: PD_action})
         _, priority = sess.run([self.criticTraining, self.priority], 
                                {self.obs0: states,
                                 self.obs1: state_s,
                                 self.actor_tf: actions,
                                 self.term: terms.reshape((-1,1)),
                                 self.rewards: rewards.reshape((-1,1)),
-                                self.ISweights: ISweights.reshape((-1,1))})
+                                self.ISweights: ISweights.reshape((-1,1)),
+                                self.PD_actior: PD_action})
         sess.run(self.soft_update)
         self.memory.updatePriority(idxs, priority)
 
-    def store_tf(self, s, a, r, s_, done, sess):
-        p = sess.run(self.priority, {self.obs0: [s],
-                                     self.obs1: [s_],
-                                     self.actor_tf: [a],
-                                     self.rewards: [[r]],
-                                     self.term: [[done]]})
-        self.memory.store(s,a,r,s_,done, p)
+    # def store_tf(self, s, a, r, s_, done, sess):
+    #     p = sess.run(self.priority, {self.obs0: [s],
+    #                                  self.obs1: [s_],
+    #                                  self.actor_tf: [a],
+    #                                  self.rewards: [[r]],
+    #                                  self.term: [[done]]})
+    #     self.memory.store(s,a,r,s_,done, p)
 
