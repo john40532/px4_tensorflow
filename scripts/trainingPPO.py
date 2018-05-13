@@ -16,13 +16,12 @@ import matplotlib.pyplot as plt
 from models.PPO import PPO
 from gazebo_px4_gym_ros import World as world
 
-
-EP_MAX = 1000
+EP_MAX = 100000
 EP_LEN = 5000
 GAMMA = 0.9
 ACTOR_LEARNING_RATE = 0.0001
 CRITIC_LEARNING_RATE = 0.0002
-BATCH = 32
+BATCH = 64
 A_UPDATE_STEPS = 10
 C_UPDATE_STEPS = 10
 S_DIM, A_DIM = 3, 1

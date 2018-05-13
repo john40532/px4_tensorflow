@@ -12,14 +12,11 @@ gym 0.9.2
 import tensorflow as tf
 import numpy as np
 
-EP_MAX = 1000
-EP_LEN = 200
 GAMMA = 0.9
 ACTOR_LEARNING_RATE = 0.0001
 CRITIC_LEARNING_RATE = 0.0002
-BATCH = 32
-A_UPDATE_STEPS = 10
-C_UPDATE_STEPS = 10
+A_UPDATE_STEPS = 5
+C_UPDATE_STEPS = 5
 S_DIM, A_DIM = 13, 4
 METHOD = [
     dict(name='kl_pen', kl_target=0.01, lam=0.5),   # KL penalty
@@ -37,8 +34,10 @@ class PPO(object):
 
         # critic
         with tf.variable_scope('critic'):
-            l1 = tf.layers.dense(self.tfstate, 100, tf.nn.relu)
-            self.v = tf.layers.dense(l1, 1)
+
+            l1 = tf.layers.dense(self.tfstate, 128, tf.nn.relu)
+            l2 = tf.layers.dense(l1, 128, tf.nn.relu)
+            self.v = tf.layers.dense(l2, 1)
             self.tfdc_r = tf.placeholder(tf.float32, [None, 1], 'discounted_r')
             self.advantage = self.tfdc_r - self.v
             self.closs = tf.reduce_mean(tf.square(self.advantage))
@@ -102,9 +101,11 @@ class PPO(object):
 
     def _build_anet(self, name, trainable):
         with tf.variable_scope(name):
-            l1 = tf.layers.dense(self.tfstate, 100, tf.nn.relu, trainable=trainable)
-            mu = tf.layers.dense(l1, A_DIM, tf.nn.sigmoid, trainable=trainable)
-            sigma = tf.layers.dense(l1, A_DIM, tf.nn.softplus, trainable=trainable)
+            l1 = tf.layers.dense(self.tfstate, 128, tf.nn.relu, trainable=trainable)
+            l2 = tf.layers.dense(l1, 128, tf.nn.relu, trainable=trainable)
+            l3 = tf.layers.dense(l2, 128, tf.nn.relu, trainable=trainable)
+            mu = tf.layers.dense(l3, A_DIM, tf.nn.sigmoid, trainable=trainable)
+            sigma = tf.layers.dense(l3, A_DIM, tf.nn.softplus, trainable=trainable)
             norm_dist = tf.distributions.Normal(loc=mu, scale=sigma)
         params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=name)
         return norm_dist, params
